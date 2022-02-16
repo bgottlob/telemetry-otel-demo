@@ -1,6 +1,6 @@
 defmodule TelemetryOtelDemo.Application do
   @moduledoc """
-  Controls the licefycle of the underly Plug HTTP server.
+  Controls the licefycle of the underlying Plug HTTP server.
   """
   use Application
 
@@ -15,23 +15,32 @@ defmodule TelemetryOtelDemo.Application do
       tag_values: fn %{
         req: %{method: method, path: path, port: port},
         resp_status: status
-      } = metadata ->
-          IO.inspect metadata
-          code = case Regex.run(~r/^(\d+) .+$/, status, capture: :all_but_first) do
-            [code] ->
-              code
-            _ ->
+      } ->
+          code =
+            if is_binary(status) do
+              case Regex.run(~r/^(\d+) .+$/, status, capture: :all_but_first) do
+                [code] ->
+                  code
+                _ ->
+                  :unknown
+              end
+            else
               :unknown
-          end
+            end
+
         %{method: method, path: path, status: code, port: port}
       end,
-      tags: [:method, :path, :status],
+      tags: [:method, :path, :port, :status],
       unit: {:nanosecond, :millisecond}
     )
   end
 
   defp metrics() do
     [
+      Telemetry.Metrics.sum(
+        "telemetry_otel_demo.auth.active_sessions",
+        event_name: [:telemetry_otel_demo, :auth]
+      ),
       response_duration()
     ]
   end

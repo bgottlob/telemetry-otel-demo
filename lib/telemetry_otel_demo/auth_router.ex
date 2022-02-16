@@ -17,11 +17,17 @@ defmodule TelemetryOtelDemo.AuthRouter do
     
     if AuthDB.authenticated?(username, password) do
       token = %{
-        "username": username,
-        "nonce": Enum.random(1..1_000_000)
+        username: username,
+        nonce: Enum.random(1..1_000_000)
       }
       |> Jason.encode!()
       |> Base.encode64()
+
+      :telemetry.execute(
+        [:telemetry_otel_demo, :auth],
+        %{active_sessions: 1},
+        %{username: username}
+      )
 
       send_resp(conn, 200, token)
     else
@@ -30,6 +36,11 @@ defmodule TelemetryOtelDemo.AuthRouter do
   end
 
   delete "/" do
+    :telemetry.execute(
+      [:telemetry_otel_demo, :auth],
+      %{active_sessions: -1},
+      %{}
+    )
     send_resp(conn, 200, "Logged out")
   end
 
