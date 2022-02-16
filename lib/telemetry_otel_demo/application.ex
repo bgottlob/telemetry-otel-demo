@@ -41,6 +41,10 @@ defmodule TelemetryOtelDemo.Application do
         "telemetry_otel_demo.auth.active_sessions",
         event_name: [:telemetry_otel_demo, :auth]
       ),
+      Telemetry.Metrics.sum(
+        "telemetry_otel_demo.enlarge.characters_capitalized",
+        event_name: [:telemetry_otel_demo, :enlarge]
+      ),
       response_duration()
     ]
   end
