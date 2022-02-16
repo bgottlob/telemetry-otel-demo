@@ -23,7 +23,8 @@ defmodule TelemetryOtelDemo.MixProject do
   defp deps do
     [
       {:jason, "1.3.0"},
-      {:plug_cowboy, "2.5.2"}
+      {:plug_cowboy, "2.5.2"},
+      {:telemetry_metrics_prometheus, "1.1.0"}
     ]
   end
 end

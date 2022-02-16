@@ -6,6 +6,36 @@ defmodule TelemetryOtelDemo.Application do
 
   require Logger
 
+  defp response_duration() do
+    Telemetry.Metrics.distribution(
+      "cowboy.response.duration",
+      reporter_options: [buckets: [50, 100, 200, 500, 1000, 5000]],
+      description: "Distribution of the response duration for HTTP endpoints",
+      event_name: [:cowboy, :request, :stop],
+      tag_values: fn %{
+        req: %{method: method, path: path, port: port},
+        resp_status: status
+      } = metadata ->
+          IO.inspect metadata
+          code = case Regex.run(~r/^(\d+) .+$/, status, capture: :all_but_first) do
+            [code] ->
+              code
+            _ ->
+              :unknown
+          end
+        %{method: method, path: path, status: code, port: port}
+      end,
+      tags: [:method, :path, :status],
+      unit: {:nanosecond, :millisecond}
+    )
+  end
+
+  defp metrics() do
+    [
+      response_duration()
+    ]
+  end
+
   def start(_type, _args) do
     port = System.get_env("PORT", "4000") |> String.to_integer()
 
@@ -13,8 +43,17 @@ defmodule TelemetryOtelDemo.Application do
 
     # Supervise the Cowboy HTTP server process
     children = [
-      {Plug.Cowboy, scheme: :http, plug: TelemetryOtelDemo.Router, options: [port: port]}
+      {Plug.Cowboy, scheme: :http, plug: TelemetryOtelDemo.Router, options: [port: port]},
+      {TelemetryMetricsPrometheus, [metrics: metrics()]}
     ]
+
+    :ok =
+      :telemetry.attach(
+        "request-handler",
+        [:cowboy, :request, :stop],
+        &TelemetryOtelDemo.PlugTelemetryHandler.handle_event/4,
+        nil
+      )
 
     opts = [strategy: :one_for_one, name: TelemetryOtelDemo.Supervisor]
     Supervisor.start_link(children, opts)
